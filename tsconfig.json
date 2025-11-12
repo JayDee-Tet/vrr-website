@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "app/cardComponents/howardCard.jsx", "app/cardComponents/howardDetails.jsx", "app/misComponents/whyVrrDetails.jsx"  ],
   "exclude": ["node_modules"]
 }

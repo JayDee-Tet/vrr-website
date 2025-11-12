@@ -1,65 +1,241 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, ReactNode, cloneElement } from "react";
+import DraggableWindow from "./mainComponents/DraggableWindow";
+import WaveBackground from "./mainComponents/WaveBackground";
+import {
+  AboutContent,
+  ProjectsContent,
+  SkillsContent, ContactContent,
+  RantContent, VrrContent,
+} from "./mainComponents/WindowContents";
+import { playSound, sounds } from "./mainComponents/sound";
+
+interface Window {
+  id: number;
+  title: string;
+  content: ReactNode;
+  zIndex: number;
+}
 
 export default function Home() {
+  const [windows, setWindows] = useState<Window[]>([]);
+  const [nextZIndex, setNextZIndex] = useState(10);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [bgMusic, setBgMusic] = useState<HTMLAudioElement | null>(null);
+
+  const openWindow = (title: string, content: ReactNode) => {
+    playSound(sounds.windowOpen, 0.3);
+    const newWindow: Window = {
+      id: Date.now(),
+      title,
+      content,
+      zIndex: nextZIndex,
+    };
+    setWindows([...windows, newWindow]);
+    setNextZIndex(nextZIndex + 1);
+  };
+
+  const closeWindow = (id: number) => {
+    playSound(sounds.windowClose, 0.3);
+    setWindows(windows.filter((w) => w.id !== id));
+  };
+
+  const focusWindow = (id: number) => {
+    setWindows(
+      windows.map((w) => (w.id === id ? { ...w, zIndex: nextZIndex } : w))
+    );
+    setNextZIndex(nextZIndex + 1);
+  };
+
+  const toggleBackgroundMusic = () => {
+    if (!bgMusic) {
+      const audio = new Audio("/music/bg.mp3");
+      audio.loop = true;
+      audio.volume = 0.5;
+      setBgMusic(audio);
+      audio.play();
+      setIsMusicPlaying(true);
+    } else {
+      if (isMusicPlaying) {
+        bgMusic.pause();
+        setIsMusicPlaying(false);
+      } else {
+        bgMusic.play();
+        setIsMusicPlaying(true);
+      }
+    }
+  };
+
+  const handleCardClick = (detailComponent: ReactNode) => {
+    // If the passed component is a valid React element, clone it to inject music props
+    // so child detail components can control playback.
+    try {
+      // cloneElement requires a ReactElement; guard and fallback to opening as-is
+      const maybeCloned =
+        detailComponent &&
+        typeof detailComponent === "object" &&
+        "props" in detailComponent
+          ? cloneElement(detailComponent as any, {
+              isMusicPlaying,
+              setIsMusicPlaying,
+              bgMusic,
+              setBgMusic,
+            })
+          : detailComponent;
+
+      openWindow("Details", maybeCloned);
+    } catch (err) {
+      // Fallback: open without injecting props
+      openWindow("Details", detailComponent);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      {/* Animated Wave Background */}
+      <WaveBackground />
+
+      {/* Main Desktop */}
+      <div className="relative z-0 flex items-center justify-center min-h-screen p-4">
+        <div className="bg-black-200 rounded-lg shadow-2xl border-1 border-gray-400 w-full max-w-2xl">
+          {/* Window Title Bar */}
+          <div className="bg-gradient-to-r from-orange-900 to-orange-800 px-4 py-3 rounded-t flex justify-between items-center">
+            <span className="text-white font-bold">
+              <span>Main Hub</span>
+            </span>
+
+            <div className="flex gap-2">
+              <button className="w-5 h-5 bg-red-500 hover:bg-red-600 border border-gray-500 flex items-center justify-center text-white text-xs font-bold">
+                x
+              </button>
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="bg-white p-12 rounded-b text-center">
+            <h1 className="text-5xl font-bold mb-2 text-gray-600">
+              hi!{" "}
+              <button
+                onClick={() =>
+                  openWindow(
+                    "Why VRR?",
+                    <VrrContent
+                      onCardClick={handleCardClick}
+                      isMusicPlaying={isMusicPlaying}
+                      setIsMusicPlaying={setIsMusicPlaying}
+                      bgMusic={bgMusic}
+                      setBgMusic={setBgMusic}
+                    />
+                  )
+                }
+                className=" hover:scale-101 transition-transform cursor-pointer"
+                title="Click Me"
+              >
+                <span className="text-orange-500">we are r.v.v</span>
+              </button>
+            </h1>
+
+            <p className="text-xl text-gray-600 mb-8">
+              devs, students, buddies
+            </p>
+
+            {/* Icon Buttons */}
+            <div className="flex gap-6 justify-center flex-wrap">
+              <button
+                onClick={() =>
+                  openWindow(
+                    "Meet the Devs",
+                    <AboutContent onCardClick={handleCardClick} />
+                  )
+                }
+                className="flex flex-col items-center gap-2 p-4 hover:scale-110 transition-transform cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                title="All my fellas"
+              >
+                <div className="text-5xl hue-rotate-[3.142rad]">ℹ️</div>
+                <span className="text-sm font-semibold text-gray-600">
+                  about
+                </span>
+              </button>
+
+              <button
+                onClick={() =>
+                  openWindow("Our Collective Projects", <ProjectsContent />)
+                }
+                className="flex flex-col items-center gap-2 p-4 hover:scale-110 transition-transform cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                title="Mostly school projects"
+              >
+                <div className="text-5xl hue-rotate-[6.142rad]">📁</div>
+                <span className="text-sm font-semibold text-gray-600">
+                  projects
+                </span>
+              </button>
+
+              <button
+                onClick={() => openWindow("Keep in Touch", <ContactContent />)}
+                className="flex flex-col items-center gap-2 p-4 hover:scale-110 transition-transform cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                title="Plz dont sent spam"
+              >
+                <div className="text-5xl hue-rotate-[3.142rad]">📧</div>
+                <span className="text-sm font-semibold text-gray-600">
+                  contact
+                </span>
+              </button>
+
+              <button
+                onClick={() => openWindow("FAQ", <SkillsContent />)}
+                className="flex flex-col items-center gap-2 p-4 hover:scale-110 transition-transform cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                title="Questions? No? Too bad."
+              >
+                <div className="text-5xl hue-rotate-[1.142rad]">❓</div>
+                <span className="text-sm font-semibold text-gray-600">faq</span>
+              </button>
+
+              <button
+                onClick={() => openWindow("Rants", <RantContent />)}
+                className="flex flex-col items-center gap-2 p-4 hover:scale-110 transition-transform cursor-pointer hover:bg-gray-100 rounded transition-colors"
+                title="We Complain--A Lot"
+              >
+                <div className="text-5xl hue-rotate-[2.142rad]">🗣️</div>
+                <span className="text-sm font-semibold text-gray-600">
+                  rants
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
+
+      {/* Draggable Windows */}
+      {windows.map((window) => (
+        <DraggableWindow
+          key={window.id}
+          title={window.title}
+          onClose={() => closeWindow(window.id)}
+          zIndex={window.zIndex}
+          onFocus={() => focusWindow(window.id)}
+        >
+          {window.content}
+        </DraggableWindow>
+      ))}
+      <button
+        onClick={toggleBackgroundMusic}
+        className="fixed bottom-8 right-8 text-6xl hover:scale-110 transition-transform cursor-pointer bg-white rounded-full p-4 shadow-lg border-2 border-gray-300 hover:shadow-xl z-50"
+        title={
+          isMusicPlaying ? "Pause background music" : "Play background music"
+        }
+      >
+        {isMusicPlaying ? (
+          <span className="relative">
+            ☕
+            <span className="absolute -top-1 -right-1 text-xl hue-rotate-[8.742rad]">
+              🎵
+            </span>
+          </span>
+        ) : (
+          <span className="grayscale opacity-60 hue-rotate-">☕</span>
+        )}
+      </button>
     </div>
   );
 }

@@ -17,7 +17,20 @@ export default function DraggableWindow({
   zIndex, 
   onFocus 
 }: DraggableWindowProps) {
-  const [position, setPosition] = useState({ x: 50, y: 50 });
+  // Calculate initial position to ensure window is visible
+  const getInitialPosition = () => {
+    const windowWidth = 500;
+    const windowHeight = 400;
+    const maxX = window.innerWidth - windowWidth;
+    const maxY = window.innerHeight - windowHeight;
+    
+    return {
+      x: Math.max(0, Math.min(50, maxX)),
+      y: Math.max(0, Math.min(50, maxY))
+    };
+  };
+  
+  const [position, setPosition] = useState(getInitialPosition());
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
@@ -35,11 +48,22 @@ export default function DraggableWindow({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        setPosition({
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y
-        });
+      if (isDragging && windowRef.current) {
+        const windowWidth = windowRef.current.offsetWidth;
+        const windowHeight = windowRef.current.offsetHeight;
+        
+        // Calculate new position
+        let newX = e.clientX - dragOffset.x;
+        let newY = e.clientY - dragOffset.y;
+        
+        // Constrain to viewport boundaries
+        const maxX = window.innerWidth - windowWidth;
+        const maxY = window.innerHeight - windowHeight;
+        
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+        
+        setPosition({ x: newX, y: newY });
       }
     };
 
@@ -57,6 +81,26 @@ export default function DraggableWindow({
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, dragOffset]);
+
+  // Handle window resize to keep windows in bounds
+  useEffect(() => {
+    const handleResize = () => {
+      if (windowRef.current) {
+        const windowWidth = windowRef.current.offsetWidth;
+        const windowHeight = windowRef.current.offsetHeight;
+        const maxX = window.innerWidth - windowWidth;
+        const maxY = window.innerHeight - windowHeight;
+        
+        setPosition(prev => ({
+          x: Math.max(0, Math.min(prev.x, maxX)),
+          y: Math.max(0, Math.min(prev.y, maxY))
+        }));
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div
